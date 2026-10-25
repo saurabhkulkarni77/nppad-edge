@@ -1,0 +1,5 @@
+# Ground-side training / export requirements (NOT needed on the edge).
+# Training reuses the study's exact model implementations.
+-r requirements.txt
+aeon==1.6.0
+scikit-learn>=1.5

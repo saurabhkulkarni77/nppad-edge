@@ -1,0 +1,70 @@
+name: CI
+
+on:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  test-bench-fault:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run test suite (12 tests)
+        env:
+          NPPAD_DATA_ROOT: demo_data
+        run: python -m pytest tests/ -v 2>&1 | tee results-pytest.txt
+
+      - name: Benchmark (single core, W=60 and W=120)
+        env:
+          OMP_NUM_THREADS: "1"
+          OPENBLAS_NUM_THREADS: "1"
+          MKL_NUM_THREADS: "1"
+          NUMEXPR_NUM_THREADS: "1"
+        run: |
+          taskset -c 0 python -m nppad_edge.bench --bundle bundle --data-root demo_data --W 60  | tee results-bench-w60.json
+          taskset -c 0 python -m nppad_edge.bench --bundle bundle --data-root demo_data --W 120 | tee results-bench-w120.json
+
+      - name: Fault-injection demo
+        run: taskset -c 0 python -m nppad_edge.faulttest --bundle bundle --data-root demo_data 2>&1 | tee results-faulttest.txt
+
+      - name: Write CI results (docs/ci-results.* + job summary)
+        run: python tools/write_ci_results.py
+
+      - name: Upload results log artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-results-log
+          path: |
+            results-pytest.txt
+            results-bench-w60.json
+            results-bench-w120.json
+            results-faulttest.txt
+            docs/ci-results.json
+            docs/ci-results.md
+
+      - name: Commit CI results to docs/
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/ci-results.json docs/ci-results.md docs/ci-results.html
+          if git diff --cached --quiet; then
+            echo "CI results unchanged; nothing to commit."
+          else
+            git commit -m "CI measured results [skip ci]"
+            git push origin HEAD:${{ github.ref_name }}
+          fi

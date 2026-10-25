@@ -1,0 +1,42 @@
+{
+  "W60": {
+    "primary": {
+      "macro_F1": 0.9837988396553342,
+      "accuracy": 0.9833333333333333,
+      "latency_ms_mean": 78.71440839998438,
+      "latency_ms_p95": 139.46635115062233,
+      "latency_ms_max": 287.3248890000468,
+      "n_windows": 240
+    },
+    "fallback": {
+      "macro_F1": 0.9569539033431322,
+      "accuracy": 0.9541666666666667,
+      "latency_ms_mean": 0.13480649583546742,
+      "latency_ms_p95": 0.08377994977308822,
+      "latency_ms_max": 2.345951999814133,
+      "n_windows": 240
+    },
+    "peak_rss_mb": 446.43359375
+  },
+  "W120": {
+    "primary": {
+      "macro_F1": 0.9875867184432131,
+      "accuracy": 0.9875,
+      "latency_ms_mean": 84.20573438749746,
+      "latency_ms_p95": 158.69797974942227,
+      "latency_ms_max": 339.2311880006673,
+      "n_windows": 240
+    },
+    "fallback": {
+      "macro_F1": 0.9528152095034418,
+      "accuracy": 0.95,
+      "latency_ms_mean": 0.15326422915601748,
+      "latency_ms_p95": 0.21637104919136266,
+      "latency_ms_max": 3.18888799938577,
+      "n_windows": 240
+    },
+    "peak_rss_mb": 454.8046875
+  },
+  "payload_only_peak_rss_mb": 72.92,
+  "bundle_total_bytes": 1981039
+}

@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NPPAD-Edge — a nuclear-plant accident classifier built for space-like edge conditions</title>
+<style>
+  :root { --ink:#1a2332; --mut:#5a6a82; --acc:#0b6e4f; --acc2:#e8f4ef; --line:#d9e1ec; --card:#f7f9fc; }
+  * { box-sizing: border-box; }
+  body { margin:0; font:16px/1.6 -apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; color:var(--ink); }
+  header { background:linear-gradient(135deg,#0d2137,#0b6e4f); color:#fff; padding:3.2rem 1.2rem 2.6rem; }
+  .wrap { max-width:920px; margin:0 auto; padding:0 1.2rem; }
+  header h1 { margin:0 0 .4rem; font-size:2.3rem; letter-spacing:-.02em; }
+  header p.sub { margin:0; font-size:1.08rem; color:#cfe6dc; max-width:44rem; }
+  .badges { margin-top:1.2rem; display:flex; gap:.5rem; flex-wrap:wrap; }
+  .badges a { background:rgba(255,255,255,.14); color:#fff; text-decoration:none; padding:.32rem .7rem; border-radius:999px; font-size:.85rem; border:1px solid rgba(255,255,255,.35); }
+  .badges a:hover { background:rgba(255,255,255,.25); }
+  main { padding:2rem 0 3rem; }
+  h2 { font-size:1.35rem; margin:2.2rem 0 .7rem; letter-spacing:-.01em; }
+  p { max-width:46rem; }
+  .cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:.8rem; margin:1rem 0; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:1rem; }
+  .card .big { font-size:1.7rem; font-weight:700; color:var(--acc); }
+  .card .lbl { color:var(--mut); font-size:.86rem; }
+  table { border-collapse:collapse; width:100%; margin:.8rem 0; font-size:.95rem; }
+  th,td { border:1px solid var(--line); padding:.5rem .65rem; text-align:left; }
+  th { background:var(--acc2); }
+  td.num, th.num { text-align:right; font-variant-numeric:tabular-nums; }
+  code { background:#eef2f7; padding:.1em .35em; border-radius:4px; font-size:.9em; }
+  .note { background:#fff8e6; border:1px solid #ecd9a0; border-radius:8px; padding:.8rem 1rem; max-width:46rem; }
+  footer { border-top:1px solid var(--line); color:var(--mut); padding:1.4rem 0 2.2rem; font-size:.9rem; }
+  a { color:var(--acc); }
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <h1>🛰️ NPPAD-Edge</h1>
+    <p class="sub">A nuclear-plant accident classifier packaged to run under outer-space-like,
+    limited-compute conditions: <strong>one CPU core, ≤ 512 MB RAM</strong>, a SHA-256-checksummed
+    model bundle, and a runtime that detects corruption in its own memory and falls back to a
+    safe-mode model.</p>
+    <div class="badges">
+      <a href="https://github.com/saurabhkulkarni77/nppad-edge">GitHub repo</a>
+      <a href="https://github.com/saurabhkulkarni77/nppad-edge/actions/workflows/ci.yml">CI runs</a>
+      <a href="ci-results.html">CI-measured results</a>
+      <a href="https://github.com/saurabhkulkarni77/nppad-edge/blob/main/BENCHMARKS.md">Benchmarks (local)</a>
+    </div>
+  </div>
+</header>
+<main class="wrap">
+
+  <h2>The idea</h2>
+  <p>NASA's <em>Intelligent Processing at the Edge</em> story describes Ubotica's CogniSAT: a small
+  companion processor flown with a satellite, running ML at the point of capture instead of
+  downlinking raw data, with protection against radiation-induced corruption. NPPAD-Edge maps that
+  architecture onto a nuclear-plant monitoring payload. The model is the winner of a SOTA study on
+  the NPPAD dataset — <strong>MultiRocket + HYDRA</strong> random-kernel features with a linear head —
+  its forward transforms re-implemented in pure NumPy and exported to a ~2 MB float16 bundle.</p>
+
+  <div class="cards">
+    <div class="card"><div class="big">0.9838</div><div class="lbl">test macro-F1, W = 60 s — exact match to the full-precision study (Δ 0.0000)</div></div>
+    <div class="card"><div class="big">0.9876</div><div class="lbl">test macro-F1, W = 120 s — exact match (Δ 0.0000)</div></div>
+    <div class="card"><div class="big">1.98 MB</div><div class="lbl">total uplink bundle (models + manifest + model card)</div></div>
+    <div class="card"><div class="big">≈ 79 ms</div><div class="lbl">per window on a single core (mean, W = 60)</div></div>
+    <div class="card"><div class="big">72.9 MB</div><div class="lbl">payload peak memory vs a 512 MB budget</div></div>
+    <div class="card"><div class="big">12 / 12</div><div class="lbl">tests pass; fault-injection demo ALL PASS</div></div>
+  </div>
+  <p style="color:var(--mut)">Headline figures measured locally on a contended shared VM (latency is
+  an upper bound). Every push re-measures them in GitHub Actions — see the
+  <a href="ci-results.html">CI-measured results</a> for the numbers from the latest run.</p>
+
+  <h2>How it maps to a space edge payload</h2>
+  <table>
+    <tr><th>CogniSAT / space edge concept</th><th>NPPAD-Edge equivalent</th></tr>
+    <tr><td>ML model adapted to a tiny processor</td><td>MultiRocket+HYDRA features + linear head in a ~MB-scale NumPy bundle (float16 weights)</td></tr>
+    <tr><td>Process at the point of capture</td><td>Streaming classifier on the sensor feed (replayed plant transients)</td></tr>
+    <tr><td>Downlink only useful results</td><td>Telemetry events only — timestamp, class, confidence, mode (~150 B/event; 7.1% of raw volume)</td></tr>
+    <tr><td>Radiation corrupts data/software</td><td>SHA-256-verified uplink bundle + periodic in-memory digest of the live weights</td></tr>
+    <tr><td>Fault protection / safe mode</td><td>Watchdog falls back to a small LogReg+ model and flags safe mode in telemetry</td></tr>
+    <tr><td>Strict power/compute envelope</td><td>Single-threaded runtime, ≤ 512 MB budget, 250 ms/window latency budget with breach accounting</td></tr>
+  </table>
+
+  <h2>Verified results</h2>
+  <table>
+    <tr><th>Model</th><th class="num">W = 60 s macro-F1</th><th class="num">W = 120 s macro-F1</th></tr>
+    <tr><td>MultiRocket+HYDRA + linear head (edge bundle)</td><td class="num"><strong>0.9838</strong></td><td class="num"><strong>0.9876</strong></td></tr>
+    <tr><td>Full-precision study reference</td><td class="num">0.9838</td><td class="num">0.9876</td></tr>
+    <tr><td>Safe-mode fallback (LogReg+)</td><td class="num">0.9570</td><td class="num">0.9528</td></tr>
+  </table>
+  <p>The NumPy transforms are bit-faithful to aeon (max abs feature difference ≤ 7.6e-06 over
+  50,752 features), so the edge bundle reproduces the study's headline scores exactly on the
+  240 held-out test windows per window size. The task: classify a 60 s / 120 s window of
+  88 plant sensor channels (onset-aligned, oracle variables excluded) into 12 accident classes.</p>
+
+  <h2>Integrity &amp; safe mode</h2>
+  <p>Every bundle file is listed in <code>manifest.json</code> with its SHA-256; the loader refuses
+  a corrupted uplink outright. While running, a checker thread periodically re-digests the live
+  weight arrays — the fault-injection demo flips a bit in memory and the watchdog catches it,
+  switches to the fallback model, and marks subsequent telemetry <code>mode: safe</code>.
+  A corrupted-bundle copy and an in-flight bit flip are both exercised in CI on every push.</p>
+
+  <h2>Honest limits</h2>
+  <div class="note">
+    This is a <strong>simulation</strong> of space conditions on ordinary Earth hardware: one CPU
+    core, a memory ceiling, and scripted bit flips stand in for a radiation environment. No
+    radiation testing, no real-time OS, no flight hardware. The sensor stream is a replay of
+    recorded NPPAD test transients and the "downlink" is a local JSONL file.
+  </div>
+
+  <h2>Links</h2>
+  <p>
+    <a href="https://github.com/saurabhkulkarni77/nppad-edge">Source code &amp; README</a> ·
+    <a href="https://github.com/saurabhkulkarni77/nppad-edge/actions/workflows/ci.yml">GitHub Actions CI</a> ·
+    <a href="ci-results.html">CI-measured results</a> ·
+    <a href="ci-results.json">CI results (JSON)</a>
+  </p>
+  <p style="color:var(--mut)">Dataset: NPPAD (Qi et al., Tsinghua, 2022; <em>Scientific Data</em> 9,
+  s41597-022-01879-1). Models: MultiRocket (Tan et al., 2022) and HYDRA (Dempster, Schmidt &amp;
+  Webb, 2023), as implemented in aeon 1.6.0.</p>
+</main>
+<footer>
+  <div class="wrap">NPPAD-Edge — edge-deployment companion to a Homework 2 NPPAD SOTA study · Saurabh Kulkarni</div>
+</footer>
+</body>
+</html>

@@ -1,0 +1,8 @@
+# NPPAD-Edge runtime requirements — deliberately minimal.
+# The edge runtime ("spacecraft side") needs nothing but numpy + pandas:
+# no scikit-learn, no aeon, no numba. That is the point of the design.
+numpy>=1.26
+pandas>=2.0
+
+# For the test-suite only:
+pytest>=8.0

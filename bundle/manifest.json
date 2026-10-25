@@ -1,0 +1,50 @@
+{
+  "format": "nppad-edge-bundle/1",
+  "config": {
+    "task": "NPPAD accident classification",
+    "t0_s": 100.0,
+    "channels": 88,
+    "classes": [
+      "LOCA",
+      "LOCAC",
+      "SLBIC",
+      "SLBOC",
+      "SGATR",
+      "SGBTR",
+      "RW",
+      "RI",
+      "FLB",
+      "MD",
+      "LR",
+      "LLB"
+    ],
+    "windows_s": [
+      60,
+      120
+    ],
+    "seed": 2026,
+    "multirocket_n_kernels": 6250
+  },
+  "files": {
+    "fallback_w120.npz": {
+      "sha256": "1c276df48fe502bda8a423719ae6b74f9c5660008cbdb9fcf4da284a1b5e6437",
+      "bytes": 9360
+    },
+    "fallback_w60.npz": {
+      "sha256": "03195aaee6e47bce79b80b233af4651dbb2628248dead196ae24fce4497b1615",
+      "bytes": 9128
+    },
+    "model_card.json": {
+      "sha256": "50bd3994bb162f3b2668b3c8b31a203161280972bf8048707014050d2141c309",
+      "bytes": 3873
+    },
+    "primary_w120.npz": {
+      "sha256": "15c54671018c8fdba1b24d1ce6a5e67d086e3dbb8e5285f6b86faae28e06a7cd",
+      "bytes": 1014674
+    },
+    "primary_w60.npz": {
+      "sha256": "0f3eb3836ad61f758e679a9f37d29ed2ec4975188aca261246545815b7622e25",
+      "bytes": 942874
+    }
+  }
+}
