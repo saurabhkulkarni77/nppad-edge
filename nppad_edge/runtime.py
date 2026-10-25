@@ -36,8 +36,11 @@ for _v in ("OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS",
 import numpy as np  # noqa: E402
 
 from .bundle import IntegrityError, load_bundle  # noqa: E402
+from .checkpoint import (CheckpointManager, GoldenRestorer,  # noqa: E402
+                         HeartbeatMonitor)
 from .data import (CLASSES, assign_splits, build_windows, load_runs,  # noqa: E402
                    variable_sets)
+from .harden import VotingClassifier  # noqa: E402
 
 
 def _rss_mb() -> float:
@@ -58,16 +61,20 @@ class MemoryChecker(threading.Thread):
     ``interval_s`` seconds. On mismatch it records a corruption event
     and notifies the watchdog callback."""
 
-    def __init__(self, model, interval_s: float, on_corruption):
+    def __init__(self, model, interval_s: float, on_corruption,
+                 on_beat=None):
         super().__init__(daemon=True, name="memory-checker")
         self._model = model
         self._interval = interval_s
         self._on_corruption = on_corruption
+        self._on_beat = on_beat
         self._stop = threading.Event()
         self.events = []
 
     def run(self):
         while not self._stop.wait(self._interval):
+            if self._on_beat is not None:
+                self._on_beat()
             if not self._model.check_memory():
                 ev = {"type": "memory_corruption_detected",
                       "at": datetime.now(timezone.utc).isoformat()}
@@ -84,7 +91,8 @@ class EdgeRuntime:
 
     def __init__(self, bundle_dir, W=60, latency_budget_ms=250.0,
                  memory_budget_mb=512.0, check_interval_s=2.0,
-                 breach_limit=3):
+                 breach_limit=3, tmr_head=False, auto_restore=False,
+                 checkpoint_path=None):
         self.primary, self.fallback = load_bundle(bundle_dir, W, verify=True)
         self.W = int(W)
         self.model = self.primary
@@ -95,14 +103,45 @@ class EdgeRuntime:
         self._lat_breaches = 0
         self.events = []                 # watchdog / mission events
         self.latencies_ms = []
-        self.checker = MemoryChecker(self.primary, check_interval_s,
-                                     self._on_corruption)
+        self._seq = 0                    # mission stream position
+        self._check_interval = float(check_interval_s)
+        # NASA-technique options (see NASA_TECHNIQUES.md); all default
+        # off so the baseline behaviour above is unchanged:
+        #   tmr_head      triple-modular-redundant head voting
+        #   auto_restore  scrub weights from the golden bundle and keep
+        #                 flying the primary instead of safe mode
+        #   checkpoint_path  persist runtime state after every window
+        self._voter = VotingClassifier(self.primary) if tmr_head else None
+        self._restorer = (GoldenRestorer(bundle_dir, W)
+                          if auto_restore else None)
+        self._checkpoint = (CheckpointManager(checkpoint_path)
+                            if checkpoint_path else None)
+        self.heartbeats = HeartbeatMonitor(
+            stale_after_s=3.0 * self._check_interval)
+        self.checker = MemoryChecker(
+            self.primary, check_interval_s, self._on_corruption,
+            on_beat=lambda: self.heartbeats.beat("memory-checker"))
         self._lock = threading.Lock()
+        self._last_disagreement = None
 
     # -- watchdog -----------------------------------------------------
     def _on_corruption(self, ev):
         with self._lock:
             self.events.append(ev)
+            if self._restorer is not None:
+                # Configuration scrub: repair from the golden bundle.
+                # Only an unrecoverable model degrades to safe mode.
+                if self._restorer.restore(self.primary):
+                    self.events.append({
+                        "type": "model_restored_from_golden",
+                        "at": datetime.now(timezone.utc).isoformat()})
+                    self.checker = MemoryChecker(
+                        self.primary, self._check_interval,
+                        self._on_corruption,
+                        on_beat=lambda: self.heartbeats.beat(
+                            "memory-checker"))
+                    self.checker.start()
+                    return
             self._enter_safe_mode("memory corruption detected by checker")
 
     def _enter_safe_mode(self, reason):
@@ -133,12 +172,41 @@ class EdgeRuntime:
     def classify_window(self, window_raw):
         """Classify one raw (T, C) window. Returns (class, confidence)."""
         t0 = time.perf_counter()
-        proba = self.model.predict_proba(window_raw)
+        if self.mode == "primary" and self._voter is not None:
+            proba = self._voter.predict_proba(window_raw)
+            self._last_disagreement = bool(
+                self._voter.last_vote["disagreement"])
+        else:
+            proba = self.model.predict_proba(window_raw)
+            self._last_disagreement = None
         dt_ms = (time.perf_counter() - t0) * 1e3
         self.latencies_ms.append(dt_ms)
         self._budget_watch(dt_ms)
+        self._seq += 1
         k = int(np.argmax(proba))
         return self.model.classes[k], float(proba[k])
+
+    # -- checkpoint / restart ------------------------------------------
+    def state_dict(self) -> dict:
+        """Serializable runtime state for checkpoint/restart."""
+        return {
+            "W": self.W,
+            "mode": self.mode,
+            "seq": self._seq,
+            "latencies_ms_count": len(self.latencies_ms),
+            "latency_ms_mean": (float(np.mean(self.latencies_ms))
+                                if self.latencies_ms else None),
+            "events": self.events,
+        }
+
+    def load_state_dict(self, state: dict):
+        """Resume stream position / mode from a checkpoint state."""
+        if int(state.get("W", self.W)) != self.W:
+            raise ValueError("checkpoint W does not match runtime W")
+        self._seq = int(state.get("seq", 0))
+        self.events = list(state.get("events", []))
+        if state.get("mode") == "safe":
+            self._enter_safe_mode("restored from checkpoint in safe mode")
 
     def stream(self, windows, telemetry_out, max_windows=None):
         """Process windows in order, writing downlink telemetry (JSONL).
@@ -147,8 +215,9 @@ class EdgeRuntime:
         Returns the list of (seq, class, confidence) for inspection."""
         results = []
         n = len(windows) if max_windows is None else min(len(windows), max_windows)
-        for seq in range(n):
-            cls, conf = self.classify_window(windows[seq])
+        for i in range(n):
+            seq = self._seq
+            cls, conf = self.classify_window(windows[i])
             rec = {
                 "seq": seq,
                 "timestamp": datetime.now(timezone.utc).isoformat(),
@@ -157,8 +226,12 @@ class EdgeRuntime:
                 "model": self.model.name,
                 "mode": self.mode,
             }
+            if self._last_disagreement is not None:
+                rec["tmr_disagreement"] = self._last_disagreement
             telemetry_out.write(json.dumps(rec) + "\n")
             telemetry_out.flush()
+            if self._checkpoint is not None:
+                self._checkpoint.save(self.state_dict())
             results.append((seq, cls, conf))
         return results
 
@@ -205,13 +278,23 @@ def main(argv=None):
     ap.add_argument("--latency-budget-ms", type=float, default=250.0)
     ap.add_argument("--memory-budget-mb", type=float, default=512.0)
     ap.add_argument("--check-interval", type=float, default=2.0)
+    ap.add_argument("--tmr-head", action="store_true",
+                    help="triple-modular-redundant head voting (harden.py)")
+    ap.add_argument("--auto-restore", action="store_true",
+                    help="scrub corrupted weights from the golden bundle "
+                         "instead of dropping to safe mode (checkpoint.py)")
+    ap.add_argument("--checkpoint", default=None,
+                    help="path to write runtime-state checkpoints")
     args = ap.parse_args(argv)
 
     try:
         rt = EdgeRuntime(args.bundle, W=args.W,
                          latency_budget_ms=args.latency_budget_ms,
                          memory_budget_mb=args.memory_budget_mb,
-                         check_interval_s=args.check_interval)
+                         check_interval_s=args.check_interval,
+                         tmr_head=args.tmr_head,
+                         auto_restore=args.auto_restore,
+                         checkpoint_path=args.checkpoint)
     except IntegrityError as e:
         print(f"BUNDLE REJECTED: {e}", file=sys.stderr)
         return 2

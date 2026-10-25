@@ -87,6 +87,24 @@ slightly from the local figures above (different hardware).
   fitted on train only, scaled windows zero-padded to 12 steps,
   hyperparameters chosen on validation macro-F1 only.
 
+## NASA techniques added (2026-10-25)
+
+Four techniques from the NASA onboard-computing literature, each a
+pure-NumPy module with its own tests and measured effect — full
+mapping, sources and honest deltas in
+[`NASA_TECHNIQUES.md`](NASA_TECHNIQUES.md):
+
+| Technique | Module | NASA source | Measured effect |
+|---|---|---|---|
+| TMR voting over 3 head replicas | `harden.py` | SpaceCube "Full TMR/NMR" | single-replica bit flip fully masked (Δ proba 0.0); +0.5 ms/window, +4.9 MB |
+| INT8-quantized head | `quantize.py` | CogniSAT model adaptation to an integer VPU | macro-F1 −0.0046 (W=60) / −0.0255 (W=120); head storage 3.0x smaller; slower in NumPy (no int32 BLAS) |
+| Watchdog heartbeat, checkpoint/restart, golden restore | `checkpoint.py` | SpaceCube watchdog + configuration scrubbing; ASE continue-after-fault | corrupted weights repaired in ~30 ms, predictions bit-identical; safe mode becomes the last resort |
+| Sensitivity-based selective protection | `sensitivity.py` | SpaceCube "Selective mitigation"; RedNet (supporting) | golden copy of top-5% entries at 15% of full-head cost; campaign shows this head is single-flip tolerant everywhere and the ranking does not predict multi-flip damage (reported as measured) |
+
+Enable in the runtime: `--tmr-head`, `--auto-restore`,
+`--checkpoint PATH`. Measure everything:
+`python -m nppad_edge.nasa_bench --bundle bundle --data-root demo_data --W 60`.
+
 ## Layout
 
 ```
@@ -100,13 +118,20 @@ nppad_edge/
                 compute budgets, telemetry downlink
   faulttest.py  scripted radiation-fault demonstration
   bench.py      latency / memory / accuracy benchmark harness
+  harden.py     TMR voting over head replicas (NASA techniques)
+  quantize.py   INT8-quantized head with calibration + accuracy report
+  checkpoint.py watchdog heartbeat, checkpoint/restart, golden restore
+  sensitivity.py sensitivity campaign + selective-protection scrubbing
+  nasa_bench.py measured evaluation of the four NASA techniques
 bundle/         the exported uplink bundle (weights + manifest + card)
 demo_data/      the 240 held-out test windows per W, packaged as .npz
                 (bit-identical to the full-dataset pipeline output —
                 the raw NPPAD CSV tree is far too large for git)
-tests/          pytest suite (integrity, accuracy, latency, telemetry)
+tests/          pytest suite (integrity, accuracy, latency, telemetry,
+                + one file per NASA-technique module)
 docs/           GitHub Pages demo page + CI-measured results
 BENCHMARKS.md   local measured bundle size, RAM, latency, accuracy
+NASA_TECHNIQUES.md  technique -> NASA source -> implementation -> effect
 ```
 
 ## Quick start

@@ -24,7 +24,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Run test suite (12 tests)
+      - name: Run test suite
         env:
           NPPAD_DATA_ROOT: demo_data
         run: python -m pytest tests/ -v 2>&1 | tee results-pytest.txt

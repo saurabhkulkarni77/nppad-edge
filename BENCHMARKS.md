@@ -69,3 +69,31 @@ model.
 cut from are ~100× larger still. Telemetry per event: sequence,
 ISO-8601 timestamp, class, confidence, model, mode. Nothing else
 leaves the processor.
+
+## NASA techniques (2026-10-25; `nppad_edge.nasa_bench`, cache-calibrated)
+
+Measured with `nasa_bench` using the study feature caches: INT8
+scales and sensitivity scores calibrated on the TRAIN split (715
+windows), evaluated on the TEST split (240 windows). Full mapping to
+sources in `NASA_TECHNIQUES.md`.
+
+| Technique | W=60 | W=120 |
+|---|---|---|
+| TMR head voting — latency mean, float → TMR | 45.9 → 46.4 ms | 44.2 → 43.8 ms (≈ noise) |
+| TMR — clean argmax agreement / max Δproba after 1 replica bit flip | 1.000 / **0.0** | 1.000 / 1.5e-08 |
+| TMR — extra memory (2 extra head copies) | +4,872,288 B | +4,872,288 B |
+| INT8 head — macro-F1 float → int8 (Δ) | 0.9838 → 0.9792 (**−0.0046**) | 0.9876 → 0.9621 (**−0.0255**) |
+| INT8 head — prediction agreement with float | 98.8% | 97.1% |
+| INT8 head — storage float32 → int8 total | 2,436,144 → 812,128 B (3.0x) | same |
+| INT8 head — head time/window (batch-amortised) | 0.23 → 0.99 ms (int8 *slower* in NumPy: no int32 BLAS) | 0.04 → 0.89 ms |
+| Golden restore after injected corruption | ~32 ms, predictions bit-identical | ~30 ms, predictions bit-identical |
+| Selective protection — golden bytes (top 5% of head entries) | 365,460 B = 15.0% of a full golden head | same |
+| Bit-flip campaign — mean macro-F1 drop, 1 flip (top / random / bottom strata) | ~1e-05 / 0.0 / 0.0 | ~2e-05 / 0.0 / 0.0 |
+| Bit-flip campaign — mean drop, 32 flips (top / random / bottom) | 0.34 / 0.36 / 0.39 — strata do **not** separate (exponent flips dominate; negative result, reported as measured) | 0.35 / 0.39 / 0.34 — same |
+
+The single-flip result is itself a finding: a logit summed over
+50,752 features gives no single weight leverage, so this head is
+inherently single-flip tolerant; TMR and golden restore are the
+mitigations that measurably matter here, and selective protection is
+cheap insurance against accumulated upsets (its scrub demonstrably
+repairs injected corruption).
