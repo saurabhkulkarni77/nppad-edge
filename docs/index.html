@@ -62,13 +62,15 @@
     <div class="card"><div class="big">0.9838</div><div class="lbl">test macro-F1, W = 60 s — exact match to the full-precision study (Δ 0.0000)</div></div>
     <div class="card"><div class="big">0.9876</div><div class="lbl">test macro-F1, W = 120 s — exact match (Δ 0.0000)</div></div>
     <div class="card"><div class="big">1.98 MB</div><div class="lbl">total uplink bundle (models + manifest + model card)</div></div>
-    <div class="card"><div class="big">≈ 79 ms</div><div class="lbl">per window on a single core (mean, W = 60)</div></div>
-    <div class="card"><div class="big">72.9 MB</div><div class="lbl">payload peak memory vs a 512 MB budget</div></div>
+    <div class="card"><div class="big">29 ms</div><div class="lbl">per window on a single core (mean, W = 60, measured in GitHub Actions CI; ≈ 79 ms on a contended local VM)</div></div>
+    <div class="card"><div class="big">74 MB</div><div class="lbl">peak memory in CI vs a 512 MB budget (72.9 MB payload-only locally)</div></div>
     <div class="card"><div class="big">12 / 12</div><div class="lbl">tests pass; fault-injection demo ALL PASS</div></div>
   </div>
-  <p style="color:var(--mut)">Headline figures measured locally on a contended shared VM (latency is
-  an upper bound). Every push re-measures them in GitHub Actions — see the
-  <a href="ci-results.html">CI-measured results</a> for the numbers from the latest run.</p>
+  <p style="color:var(--mut)">Accuracy and test figures are identical locally and in CI.
+  Latency/memory cards show the latest <strong>GitHub Actions CI measurement</strong>
+  (<a href="https://github.com/saurabhkulkarni77/nppad-edge/actions/runs/40229750763">run 40229750763</a>,
+  2026-10-25); local figures from a contended shared VM are in BENCHMARKS.md. Every push
+  re-measures everything — see the <a href="ci-results.html">CI-measured results</a>.</p>
 
   <h2>How it maps to a space edge payload</h2>
   <table>
