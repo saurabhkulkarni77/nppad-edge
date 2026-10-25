@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NPPAD-Edge — CI-measured results</title>
+<style>body{font:16px/1.6 -apple-system,"Segoe UI",Roboto,sans-serif;margin:2rem auto;max-width:820px;padding:0 1rem;color:#1a2332}
+table{border-collapse:collapse;width:100%}th,td{border:1px solid #d9e1ec;padding:.5rem .65rem;text-align:left}
+th{background:#e8f4ef}a{color:#0b6e4f}</style></head><body>
+<h1>NPPAD-Edge — results measured in GitHub Actions CI</h1>
+<p>Measured 2026-10-25T20:14:24.483931+00:00 on GitHub Actions ubuntu-latest, 1 core (taskset -c 0).<br>
+Run: <a href="https://github.com/saurabhkulkarni77/nppad-edge/actions/runs/40229750763">https://github.com/saurabhkulkarni77/nppad-edge/actions/runs/40229750763</a></p>
+<ul>
+<li>Test suite: <strong>12 passed</strong></li>
+<li>Fault-injection demo: <strong>ALL PASS</strong></li>
+<li>Benchmark: held-out test windows, single core, bundle SHA-256-verified before loading.</li>
+</ul>
+<table>
+<tr><th>Window</th><th>Primary macro-F1</th><th>Fallback macro-F1</th><th>Primary latency mean</th><th>Primary latency p95</th><th>Windows</th></tr>
+<tr><td>W = 60 s</td><td>0.9838</td><td>0.9570</td><td>29.4 ms</td><td>29.8 ms</td><td>240</td></tr>
+<tr><td>W = 120 s</td><td>0.9876</td><td>0.9528</td><td>29.3 ms</td><td>29.6 ms</td><td>240</td></tr>
+</table>
+<p>Benchmark-process peak RSS (includes the replay harness): W = 60: 74 MB · W = 120: 75 MB (budget 512 MB).</p>
+<p>Reference (full-precision study): W = 60 macro-F1 0.9838, W = 120 macro-F1 0.9876.
+Local-machine figures are in <a href="https://github.com/saurabhkulkarni77/nppad-edge/blob/main/BENCHMARKS.md">BENCHMARKS.md</a>;
+CI numbers are measured on different hardware and may differ slightly.</p>
+<p><a href="index.html">← Back to the NPPAD-Edge demo page</a></p>
+</body></html>

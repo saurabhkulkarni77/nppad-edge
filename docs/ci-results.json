@@ -1,0 +1,45 @@
+{
+  "measured_at_utc": "2026-10-25T20:14:24.483931+00:00",
+  "runner": "GitHub Actions ubuntu-latest, 1 core (taskset -c 0)",
+  "workflow_run": "https://github.com/saurabhkulkarni77/nppad-edge/actions/runs/40229750763",
+  "tests_passed": 12,
+  "fault_injection_all_pass": true,
+  "W60": {
+    "primary": {
+      "macro_F1": 0.9837988396553342,
+      "accuracy": 0.9833333333333333,
+      "latency_ms_mean": 29.448326283333277,
+      "latency_ms_p95": 29.824239299992428,
+      "latency_ms_max": 39.27984900002457,
+      "n_windows": 240
+    },
+    "fallback": {
+      "macro_F1": 0.9569539033431322,
+      "accuracy": 0.9541666666666667,
+      "latency_ms_mean": 0.0434764875011003,
+      "latency_ms_p95": 0.05208650000980697,
+      "latency_ms_max": 0.10874399998783701,
+      "n_windows": 240
+    },
+    "peak_rss_mb": 74.44140625
+  },
+  "W120": {
+    "primary": {
+      "macro_F1": 0.9875867184432131,
+      "accuracy": 0.9875,
+      "latency_ms_mean": 29.31153091249996,
+      "latency_ms_p95": 29.556232349985123,
+      "latency_ms_max": 30.106071999995265,
+      "n_windows": 240
+    },
+    "fallback": {
+      "macro_F1": 0.9528152095034418,
+      "accuracy": 0.95,
+      "latency_ms_mean": 0.045064012498841066,
+      "latency_ms_p95": 0.05430499999903303,
+      "latency_ms_max": 0.10712100001342151,
+      "n_windows": 240
+    },
+    "peak_rss_mb": 74.94140625
+  }
+}
